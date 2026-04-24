@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>作业辅助工具</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<!-- ============ 顶部栏 ============ -->
+<header class="topbar">
+  <button id="btn-back" class="btn-icon hidden" title="返回">←</button>
+  <h1 id="page-title">作业辅助工具</h1>
+  <div class="topbar-right">
+    <!-- 当前学生指示 -->
+    <button id="btn-current-student" class="current-student hidden" title="切换学生">
+      <span id="cs-avatar" class="cs-avatar">🧑‍🎓</span>
+      <span id="cs-name" class="cs-name">-</span>
+    </button>
+    <button id="btn-top-settings" class="btn-icon" title="大模型设置">⚙</button>
+    <button id="btn-logs" class="dot-btn" title="日志"></button>
+  </div>
+</header>
+
+<!-- ============ 学生选择页（首页） ============ -->
+<section id="view-login" class="view active">
+  <div class="hero">
+    <h2>选择身份</h2>
+    <p class="hint">每个身份都是独立的档案：错题本、知识图谱、能力画像互不干扰</p>
+  </div>
+  <div id="student-grid" class="student-grid">
+    <div class="placeholder">加载中...</div>
+  </div>
+  <div class="login-actions">
+    <button class="btn btn-primary" id="btn-add-student">+ 添加学生</button>
+    <button class="btn" id="btn-goto-teacher">👨‍🏫 教师面板</button>
+    <button class="btn" id="btn-goto-global">🌐 全局题库</button>
+    <button class="btn btn-ghost" id="btn-goto-settings">⚙ 大模型设置</button>
+  </div>
+</section>
+
+<!-- ============ 学生仪表盘 ============ -->
+<section id="view-home" class="view">
+  <div class="dash-header">
+    <div class="dash-profile">
+      <div id="dash-avatar" class="dash-avatar">🧑‍🎓</div>
+      <div class="dash-name-wrap">
+        <div id="dash-name" class="dash-name">-</div>
+        <div id="dash-sub" class="dash-sub"></div>
+      </div>
+    </div>
+    <div class="dash-stats" id="dash-stats"></div>
+  </div>
+
+  <div class="dash-grid">
+    <button class="mode-card" data-goto="batch">
+      <div class="mode-icon">📚</div>
+      <div class="mode-title">批量批改</div>
+      <div class="mode-desc">上传/拍摄作业照片，一次批改整页</div>
+    </button>
+    <button class="mode-card" data-goto="realtime">
+      <div class="mode-icon">🎥</div>
+      <div class="mode-title">实时批改</div>
+      <div class="mode-desc">摄像头对准题目即时反馈</div>
+    </button>
+    <button class="mode-card" data-goto="errors">
+      <div class="mode-icon">📕</div>
+      <div class="mode-title">错题本</div>
+      <div class="mode-desc">自动收录、分类、标掌握</div>
+    </button>
+    <button class="mode-card" data-goto="knowledge">
+      <div class="mode-icon">🧠</div>
+      <div class="mode-title">知识图谱</div>
+      <div class="mode-desc">点击节点查看 AI 讲解</div>
+    </button>
+    <button class="mode-card" data-goto="ability">
+      <div class="mode-icon">🎯</div>
+      <div class="mode-title">能力雷达</div>
+      <div class="mode-desc">六维能力分析 + 改进建议</div>
+    </button>
+    <button class="mode-card" data-goto="practice">
+      <div class="mode-icon">✍️</div>
+      <div class="mode-title">练习生成</div>
+      <div class="mode-desc">基于错题生成变式题</div>
+    </button>
+    <button class="mode-card" data-goto="manage">
+      <div class="mode-icon">🗂️</div>
+      <div class="mode-title">题库管理</div>
+      <div class="mode-desc">我的短期 / 长期（RAG）题库</div>
+    </button>
+    <button class="mode-card" data-goto="global">
+      <div class="mode-icon">🌐</div>
+      <div class="mode-title">全局题库</div>
+      <div class="mode-desc">全体共享，对每个学生生效</div>
+    </button>
+    <button class="mode-card" data-goto="settings">
+      <div class="mode-icon">⚙️</div>
+      <div class="mode-title">大模型设置</div>
+      <div class="mode-desc">切换 / 配置 供应商</div>
+    </button>
+  </div>
+
+  <div class="status-bar" id="status-bar">加载中...</div>
+</section>
+
+<!-- ============ 批量模式 ============ -->
+<section id="view-batch" class="view">
+  <div class="toolbar">
+    <input type="file" id="batch-files" accept="image/*" multiple capture="environment" hidden />
+    <button class="btn" id="btn-pick">📷 拍照/选图</button>
+    <button class="btn btn-primary" id="btn-start-grade" disabled>▶ 开始批改</button>
+    <button class="btn btn-ghost" id="btn-clear-queue">清空队列</button>
+    <span class="queue-count" id="queue-count">队列: 0</span>
+  </div>
+
+  <div class="queue-strip" id="queue-strip"></div>
+
+  <div class="split" id="batch-results-wrap">
+    <div class="split-left">
+      <div class="image-stage" id="image-stage">
+        <div class="placeholder">这里会显示当前照片和识别框</div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div id="grade-list" class="grade-list">
+        <div class="placeholder">批改结果将显示在这里</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pager">
+    <button class="btn" id="btn-prev">← 上一张</button>
+    <span id="page-indicator">0 / 0</span>
+    <button class="btn" id="btn-next">下一张 →</button>
+  </div>
+</section>
+
+<!-- ============ 实时模式 ============ -->
+<section id="view-realtime" class="view">
+  <div class="toolbar">
+    <button class="btn btn-primary" id="btn-cam-start">▶ 开启摄像头</button>
+    <button class="btn btn-ghost" id="btn-cam-stop" disabled>■ 停止</button>
+    <label class="switch">
+      <input type="checkbox" id="cam-facing" checked />
+      <span>使用后置摄像头</span>
+    </label>
+  </div>
+  <div class="split">
+    <div class="split-left">
+      <div class="cam-stage" id="cam-stage">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="overlay"></canvas>
+      </div>
+      <div class="realtime-status" id="rt-status">未启动</div>
+    </div>
+    <div class="split-right">
+      <div id="rt-grade-list" class="grade-list">
+        <div class="placeholder">实时批改结果</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 错题本 ============ -->
+<section id="view-errors" class="view">
+  <div class="toolbar">
+    <label class="switch">
+      <input type="checkbox" id="eb-hide-mastered" />
+      <span>隐藏已掌握</span>
+    </label>
+    <button class="btn btn-ghost" id="btn-eb-refresh">刷新</button>
+    <button class="btn btn-ghost" id="btn-eb-clear">清空错题本</button>
+  </div>
+  <div class="eb-summary" id="eb-summary"></div>
+  <div class="eb-list" id="eb-list">
+    <div class="placeholder">加载中...</div>
+  </div>
+</section>
+
+<!-- ============ 知识图谱 ============ -->
+<section id="view-knowledge" class="view">
+  <div class="toolbar">
+    <button class="btn btn-ghost" id="btn-kg-refresh">刷新</button>
+    <span class="hint" id="kg-hint">点击节点让 AI 展开讲解</span>
+    <label class="switch">
+      <input type="checkbox" id="kg-show-labels" checked />
+      <span>显示标签</span>
+    </label>
+  </div>
+  <div class="kg-wrap">
+    <div class="kg-stage" id="kg-stage">
+      <svg id="kg-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="kg-side">
+      <h3>薄弱知识点</h3>
+      <div id="kg-weak" class="kg-weak"><div class="placeholder">暂无</div></div>
+      <h3 style="margin-top:20px;">图例</h3>
+      <div class="kg-legend">
+        <div class="kg-legend-row"><span class="kg-dot mastery-great"></span>掌握度 ≥ 85</div>
+        <div class="kg-legend-row"><span class="kg-dot mastery-good"></span>70 ~ 85</div>
+        <div class="kg-legend-row"><span class="kg-dot mastery-mid"></span>50 ~ 70</div>
+        <div class="kg-legend-row"><span class="kg-dot mastery-weak"></span>&lt; 50</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 能力雷达 ============ -->
+<section id="view-ability" class="view">
+  <div class="toolbar">
+    <button class="btn btn-ghost" id="btn-ab-refresh">刷新</button>
+    <button class="btn btn-primary" id="btn-ab-advice">🤖 生成改进建议</button>
+    <button class="btn btn-ghost" id="btn-ab-reset">重置雷达</button>
+  </div>
+  <div class="ab-wrap">
+    <div class="ab-radar-wrap">
+      <svg id="ab-radar" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"></svg>
+      <div id="ab-radar-legend" class="ab-legend"></div>
+    </div>
+    <div class="ab-advice">
+      <h3>改进建议</h3>
+      <div id="ab-advice-body" class="markdown-body">
+        <div class="placeholder">点击「生成改进建议」让 AI 分析你的画像</div>
+      </div>
+      <div id="ab-advice-time" class="hint"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 练习生成 ============ -->
+<section id="view-practice" class="view">
+  <div class="practice-top">
+    <div class="practice-form">
+      <h3>从知识点生成</h3>
+      <div class="pf-row">
+        <input id="pf-kp" placeholder="知识点名称（如：一元二次方程求根公式）" />
+      </div>
+      <div class="pf-row">
+        <select id="pf-qtype">
+          <option value="normal">解答/计算题</option>
+          <option value="multiple_choice">选择题</option>
+          <option value="fill_blank">填空题</option>
+        </select>
+        <select id="pf-difficulty">
+          <option value="easy">简单</option>
+          <option value="same" selected>相当</option>
+          <option value="hard">偏难</option>
+        </select>
+        <select id="pf-count">
+          <option value="2">2 题</option>
+          <option value="3" selected>3 题</option>
+          <option value="5">5 题</option>
+          <option value="8">8 题</option>
+        </select>
+        <button class="btn btn-primary" id="btn-pf-gen">🤖 生成</button>
+      </div>
+    </div>
+    <div class="practice-form">
+      <h3>从错题本生成</h3>
+      <p class="hint" style="margin:4px 0 8px;">在错题本页面点具体某一题上的「生成类似题」按钮也可触发</p>
+      <button class="btn" id="btn-pf-goto-errors">→ 去错题本选一题</button>
+    </div>
+  </div>
+  <div class="practice-list" id="practice-list">
+    <div class="placeholder">加载中...</div>
+  </div>
+</section>
+
+<!-- ============ 题库管理 ============ -->
+<section id="view-manage" class="view">
+  <div class="tabs">
+    <button class="tab active" data-tab="short">短期题库</button>
+    <button class="tab" data-tab="long">长期题库 (RAG)</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-short">
+    <div class="bank-add">
+      <textarea id="st-question" placeholder="题目（必填）"></textarea>
+      <textarea id="st-solution" placeholder="参考解答（可选）"></textarea>
+      <input id="st-note" placeholder="备注（可选）" />
+      <div class="bank-add-actions">
+        <button class="btn btn-primary" id="btn-st-add">添加</button>
+        <button class="btn" id="btn-st-photo">📷 拍照录题</button>
+        <input type="file" id="st-photo-input" accept="image/*" capture="environment" hidden />
+        <button class="btn btn-ghost" id="btn-st-clear">清空</button>
+      </div>
+    </div>
+    <div class="bank-list" id="bank-list-short"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-long">
+    <div class="bank-add">
+      <textarea id="lt-question" placeholder="题目（必填）"></textarea>
+      <textarea id="lt-solution" placeholder="参考解答（可选）"></textarea>
+      <input id="lt-note" placeholder="备注（可选）" />
+      <div class="bank-add-actions">
+        <button class="btn btn-primary" id="btn-lt-add">添加</button>
+        <button class="btn" id="btn-lt-photo">📷 拍照录题</button>
+        <input type="file" id="lt-photo-input" accept="image/*" capture="environment" hidden />
+        <button class="btn btn-ghost" id="btn-lt-clear">清空</button>
+      </div>
+    </div>
+    <div class="bank-list" id="bank-list-long"></div>
+  </div>
+</section>
+
+<!-- ============ 全局题库（对所有学生生效） ============ -->
+<section id="view-global" class="view">
+  <div class="global-hero">
+    <div>
+      <h2 style="margin:0;">🌐 全局题库</h2>
+      <p class="hint" style="margin:4px 0 0;">
+        这里的题目会被<b>所有学生</b>共用，作为批改时 AI 的参考素材与检索源。
+        适合放权威例题、通用易错点、班级统一补充等。
+      </p>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-gtab="short">短期（近期记忆）</button>
+    <button class="tab" data-gtab="long">长期（RAG 检索）</button>
+  </div>
+
+  <div class="tab-panel active" id="gtab-short">
+    <div class="bank-add">
+      <textarea id="gst-question" placeholder="题目（必填）"></textarea>
+      <textarea id="gst-solution" placeholder="参考解答（可选）"></textarea>
+      <input id="gst-note" placeholder="备注（可选）" />
+      <div class="bank-add-actions">
+        <button class="btn btn-primary" id="btn-gst-add">添加到全局</button>
+        <button class="btn" id="btn-gst-photo">📷 拍照录题</button>
+        <input type="file" id="gst-photo-input" accept="image/*" capture="environment" hidden />
+        <button class="btn btn-ghost" id="btn-gst-clear">清空</button>
+      </div>
+    </div>
+    <div class="bank-list" id="bank-list-gshort"></div>
+  </div>
+
+  <div class="tab-panel" id="gtab-long">
+    <div class="bank-add">
+      <textarea id="glt-question" placeholder="题目（必填）"></textarea>
+      <textarea id="glt-solution" placeholder="参考解答（可选）"></textarea>
+      <input id="glt-note" placeholder="备注（可选）" />
+      <div class="bank-add-actions">
+        <button class="btn btn-primary" id="btn-glt-add">添加到全局</button>
+        <button class="btn" id="btn-glt-photo">📷 拍照录题</button>
+        <input type="file" id="glt-photo-input" accept="image/*" capture="environment" hidden />
+        <button class="btn btn-ghost" id="btn-glt-clear">清空</button>
+      </div>
+    </div>
+    <div class="bank-list" id="bank-list-glong"></div>
+  </div>
+</section>
+
+<!-- ============ 教师面板 —— v4 新增 ============ -->
+<section id="view-teacher" class="view">
+  <div class="teacher-head">
+    <div>
+      <h2 class="sv-title">👨‍🏫 教师面板</h2>
+      <p class="hint" id="teacher-meta">加载中...</p>
+    </div>
+    <div class="teacher-actions">
+      <button class="btn btn-ghost" id="btn-tch-refresh">🔄 刷新</button>
+      <button class="btn btn-primary" id="btn-tch-advice">🤖 生成班级建议</button>
+    </div>
+  </div>
+
+  <div class="tch-tiles" id="tch-tiles"></div>
+
+  <div class="tch-grid">
+    <div class="tch-card">
+      <div class="tch-card-head">
+        <h3>班级能力雷达（六维）</h3>
+        <span class="hint">班级平均 vs 最低</span>
+      </div>
+      <div class="tch-radar-wrap">
+        <svg id="tch-radar" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"></svg>
+      </div>
+    </div>
+
+    <div class="tch-card">
+      <div class="tch-card-head">
+        <h3>正确率分布</h3>
+        <span class="hint">学生人数</span>
+      </div>
+      <svg id="tch-bucket" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"></svg>
+    </div>
+
+    <div class="tch-card">
+      <div class="tch-card-head">
+        <h3>近 7 天作业趋势</h3>
+        <span class="hint">已批改 vs 错题</span>
+      </div>
+      <svg id="tch-trend" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 240"></svg>
+    </div>
+
+    <div class="tch-card">
+      <div class="tch-card-head">
+        <h3>高频错因维度</h3>
+        <span class="hint">班级累计</span>
+      </div>
+      <div id="tch-cats" class="tch-cats"></div>
+    </div>
+
+    <div class="tch-card tch-span-2">
+      <div class="tch-card-head">
+        <h3>全班知识点掌握热力图</h3>
+        <span class="hint">深红=薄弱，深绿=掌握</span>
+      </div>
+      <div id="tch-heatmap" class="tch-heatmap"></div>
+    </div>
+
+    <div class="tch-card">
+      <div class="tch-card-head"><h3>班级薄弱 TOP</h3></div>
+      <div id="tch-weak" class="tch-list"></div>
+    </div>
+
+    <div class="tch-card">
+      <div class="tch-card-head"><h3>班级稳固 TOP</h3></div>
+      <div id="tch-strong" class="tch-list"></div>
+    </div>
+
+    <div class="tch-card tch-span-2">
+      <div class="tch-card-head">
+        <h3>学生一览</h3>
+        <div class="tch-tabs">
+          <button class="tch-tab active" data-st="accuracy">按正确率</button>
+          <button class="tch-tab" data-st="errors">按错题数</button>
+          <button class="tch-tab" data-st="activity">按近期活跃</button>
+        </div>
+      </div>
+      <div id="tch-students" class="tch-students"></div>
+    </div>
+
+    <div class="tch-card tch-span-full">
+      <div class="tch-card-head">
+        <h3>🤖 班级整体教学建议</h3>
+        <span class="hint" id="tch-advice-time"></span>
+      </div>
+      <div id="tch-advice-body" class="markdown-body">
+        <div class="placeholder">点击右上角「生成班级建议」让 AI 诊断当前班级整体学情</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 学生详情页（教师视角） —— v5 新全页 ============ -->
+<section id="view-teacher-student" class="view">
+  <div class="tsv-head">
+    <div class="tsv-profile">
+      <div id="tsv-avatar" class="tsv-avatar">🧑‍🎓</div>
+      <div class="tsv-name-wrap">
+        <div id="tsv-name" class="tsv-name">-</div>
+        <div id="tsv-sub" class="tsv-sub"></div>
+      </div>
+    </div>
+    <div class="tsv-actions">
+      <button class="btn btn-ghost" id="btn-tsv-refresh">🔄 刷新</button>
+      <button class="btn btn-primary" id="btn-tsv-advice">🤖 生成学情建议</button>
+    </div>
+  </div>
+
+  <div class="tsv-stats" id="tsv-stats"></div>
+
+  <div class="tsv-tabs">
+    <button class="tsv-tab active" data-tab="overview">📊 能力总览</button>
+    <button class="tsv-tab" data-tab="history">🔍 搜题/批改记录</button>
+    <button class="tsv-tab" data-tab="errors">📕 错题本</button>
+    <button class="tsv-tab" data-tab="knowledge">🧠 知识点</button>
+  </div>
+
+  <!-- 能力总览 -->
+  <div class="tsv-panel active" data-panel="overview">
+    <div class="tsv-card">
+      <div class="tsv-card-head"><h3>六维能力</h3><span class="hint">满分 100</span></div>
+      <div id="tsv-dims" class="tsv-dims"></div>
+    </div>
+    <div class="tsv-card">
+      <div class="tsv-card-head"><h3>🤖 学情建议</h3><span class="hint" id="tsv-advice-time"></span></div>
+      <div id="tsv-advice-body" class="markdown-body">
+        <div class="placeholder">点击右上角「生成学情建议」让 AI 分析这个学生的整体画像</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 搜题 / 批改记录 -->
+  <div class="tsv-panel" data-panel="history">
+    <div class="tsv-toolbar">
+      <input id="tsv-h-filter" placeholder="搜索题目关键字..." />
+      <select id="tsv-h-filter-type">
+        <option value="">所有题型</option>
+        <option value="normal">解答题</option>
+        <option value="multiple_choice">选择题</option>
+        <option value="fill_blank">填空题</option>
+      </select>
+      <select id="tsv-h-filter-verdict">
+        <option value="">全部结果</option>
+        <option value="true">仅正确</option>
+        <option value="false">仅错误</option>
+      </select>
+      <span class="hint" id="tsv-h-count"></span>
+    </div>
+    <div class="tsv-history-list" id="tsv-history-list">
+      <div class="placeholder">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 错题本 -->
+  <div class="tsv-panel" data-panel="errors">
+    <div class="tsv-toolbar">
+      <input id="tsv-e-filter" placeholder="搜索错题关键字..." />
+      <label class="switch">
+        <input type="checkbox" id="tsv-e-hide-mastered" />
+        <span>隐藏已掌握</span>
+      </label>
+      <span class="hint" id="tsv-e-count"></span>
+    </div>
+    <div class="tsv-errors-list" id="tsv-errors-list">
+      <div class="placeholder">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 知识点 -->
+  <div class="tsv-panel" data-panel="knowledge">
+    <div class="tsv-toolbar">
+      <input id="tsv-k-filter" placeholder="筛选知识点..." />
+      <select id="tsv-k-sort">
+        <option value="weak">按掌握度（低→高）</option>
+        <option value="strong">按掌握度（高→低）</option>
+        <option value="most">按练习次数</option>
+      </select>
+      <span class="hint" id="tsv-k-count"></span>
+    </div>
+    <div class="tsv-kp-list" id="tsv-kp-list">
+      <div class="placeholder">加载中...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 学生详情弹窗（保留为 fallback，不再主用） ============ -->
+<div id="tch-stu-modal" class="modal hidden">
+  <div class="modal-body tch-stu-modal-body">
+    <div class="modal-head">
+      <strong id="tcs-title">学生详情</strong>
+      <button class="btn-icon" id="tcs-close">✕</button>
+    </div>
+    <div class="modal-content" id="tcs-content">
+      <div class="placeholder">加载中...</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="tcs-close2">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 大模型设置 ============ -->
+<section id="view-settings" class="view">
+  <div class="settings-head">
+    <div>
+      <h2 class="sv-title">大模型设置</h2>
+      <p class="hint">批改、检测、嵌入全部由这里选中的供应商提供（全局设置，所有学生共用）</p>
+    </div>
+    <div class="settings-global">
+      <label class="switch">
+        <input type="checkbox" id="fb-vision" />
+        <span>视觉不支持时回退 Ollama</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="fb-embed" />
+        <span>嵌入不支持时回退 Ollama</span>
+      </label>
+    </div>
+  </div>
+  <div class="provider-picker" id="provider-picker"></div>
+  <div class="provider-editor" id="provider-editor">
+    <div class="placeholder">请选择一个供应商</div>
+  </div>
+</section>
+
+<!-- ============ 学生编辑弹窗 ============ -->
+<div id="student-modal" class="modal hidden">
+  <div class="modal-body">
+    <div class="modal-head">
+      <strong id="sm-title">添加学生</strong>
+      <button class="btn-icon" id="sm-close">✕</button>
+    </div>
+    <div class="modal-content">
+      <div class="sm-avatar-row">
+        <div id="sm-avatar-preview" class="sm-avatar-preview">🧑‍🎓</div>
+        <div class="sm-avatar-actions">
+          <input type="file" id="sm-avatar-file" accept="image/*" hidden />
+          <button class="btn btn-sm" id="sm-pick-avatar">📷 上传头像</button>
+          <div class="sm-emoji-row">
+            <button class="sm-emoji" data-emoji="🧑‍🎓">🧑‍🎓</button>
+            <button class="sm-emoji" data-emoji="👦">👦</button>
+            <button class="sm-emoji" data-emoji="👧">👧</button>
+            <button class="sm-emoji" data-emoji="🐯">🐯</button>
+            <button class="sm-emoji" data-emoji="🐼">🐼</button>
+            <button class="sm-emoji" data-emoji="🦊">🦊</button>
+            <button class="sm-emoji" data-emoji="🐰">🐰</button>
+            <button class="sm-emoji" data-emoji="⭐">⭐</button>
+          </div>
+        </div>
+      </div>
+      <label class="field">
+        <span>姓名 *</span>
+        <input id="sm-name" maxlength="20" />
+      </label>
+      <label class="field">
+        <span>年级 / 学段</span>
+        <input id="sm-grade" placeholder="如：小学五年级 / 初二" />
+      </label>
+      <label class="field">
+        <span>学科</span>
+        <input id="sm-subject" placeholder="如：数学 / 物理（可留空）" />
+      </label>
+      <label class="field">
+        <span>备注</span>
+        <textarea id="sm-note" placeholder="可选"></textarea>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="sm-delete">删除此学生</button>
+      <div style="flex:1"></div>
+      <button class="btn" id="sm-cancel">取消</button>
+      <button class="btn btn-primary" id="sm-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 知识点讲解弹窗 ============ -->
+<div id="kp-modal" class="modal hidden">
+  <div class="modal-body kp-modal-body">
+    <div class="modal-head">
+      <strong id="kp-title">知识点讲解</strong>
+      <button class="btn-icon" id="kp-close">✕</button>
+    </div>
+    <div class="modal-content">
+      <div id="kp-stats" class="kp-stats"></div>
+      <div id="kp-explain" class="markdown-body"><div class="placeholder">加载中...</div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="kp-regen">🔄 重新生成讲解</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary" id="kp-practice">✍️ 基于此知识点生成练习</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 错题详情 / 生成练习弹窗 ============ -->
+<div id="err-modal" class="modal hidden">
+  <div class="modal-body">
+    <div class="modal-head">
+      <strong>生成类似题</strong>
+      <button class="btn-icon" id="err-close">✕</button>
+    </div>
+    <div class="modal-content">
+      <div id="err-preview" class="err-preview"></div>
+      <div class="field-row">
+        <label class="field">
+          <span>数量</span>
+          <select id="err-count">
+            <option value="2">2 题</option>
+            <option value="3" selected>3 题</option>
+            <option value="5">5 题</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>难度</span>
+          <select id="err-difficulty">
+            <option value="easy">简单</option>
+            <option value="same" selected>相当</option>
+            <option value="hard">偏难</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="err-cancel">取消</button>
+      <button class="btn btn-primary" id="err-gen">🤖 生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 日志面板 ============ -->
+<div id="log-panel" class="log-panel hidden">
+  <div class="log-header">
+    <strong>系统日志</strong>
+    <div>
+      <button class="btn btn-ghost" id="btn-log-refresh">刷新</button>
+      <button class="btn btn-ghost" id="btn-log-clear">清空</button>
+      <button class="btn btn-ghost" id="btn-log-close">关闭</button>
+    </div>
+  </div>
+  <div id="log-body" class="log-body"></div>
+</div>
+
+<!-- 全局 loading -->
+<div id="loading-mask" class="loading-mask hidden">
+  <div class="loading-spinner"></div>
+  <div id="loading-text">处理中...</div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
